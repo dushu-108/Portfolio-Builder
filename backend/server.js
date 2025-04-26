@@ -89,9 +89,12 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     connect();
     console.log(`Server is running on port ${PORT}`);
     console.log('Environment:', process.env.NODE_ENV);
     console.log('Serving portfolios from:', generatedPortfoliosPath);
 });
+
+// Increase server timeout to 5 minutes
+server.setTimeout(300000);

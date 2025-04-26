@@ -78,7 +78,11 @@ Please provide the complete HTML code with embedded Tailwind CSS and any necessa
 
         console.log('Sending prompt to Gemini...'); // Debug log
 
-        const result = await model.generateContent(prompt);
+        // Set a timeout for Gemini AI call (5 minutes)
+const result = await Promise.race([
+    model.generateContent(prompt),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Gemini AI timeout after 5 minutes')), 300000))
+]);
         if (!result) {
             throw new Error('No response from Gemini AI');
         }
