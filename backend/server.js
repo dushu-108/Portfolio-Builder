@@ -97,4 +97,4 @@ const server = app.listen(PORT, () => {
 });
 
 // Increase server timeout to 5 minutes
-server.setTimeout(300000);
+server.setTimeout(90000);
