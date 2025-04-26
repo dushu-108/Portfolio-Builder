@@ -2,18 +2,12 @@ import axios from 'axios';
 
 // Function to determine the API URL based on the environment
 const getApiUrl = () => {
-    // For production (bundled frontend/backend), use relative URL with /api prefix
-    if (window.location.hostname.includes('onrender.com')) {
-        return '/api';  // Use relative path with the /api prefix
+    // Use localhost only in development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3000/api';
     }
-    
-    // Use environment variable if available
-    if (import.meta.env.VITE_API_URL) {
-        return import.meta.env.VITE_API_URL;
-    }
-    
-    // Default for development
-    return 'http://localhost:3000/api';
+    // In production (any non-localhost), always use relative /api
+    return '/api';
 };
 
 const instance = axios.create({
