@@ -30,34 +30,22 @@ export const getPortfolio = async (req, res) => {
             return res.status(404).json({ message: "Portfolio not found" });
         }
 
-        // Path where the generated HTML should be
-        const outputDir = path.join(process.cwd(), 'generated-portfolios', userId.toString());
-        const indexPath = path.join(outputDir, 'index.html');
-        let fileExists = fs.existsSync(indexPath);
-
-        // If file doesn't exist, generate it now (wait for completion)
-        if (!fileExists) {
-            let aiContent = '';
-            try {
-                aiContent = await generateContent(portfolio);
-                if (!fs.existsSync(outputDir)) {
-                    fs.mkdirSync(outputDir, { recursive: true });
-                }
-                fs.writeFileSync(indexPath, aiContent);
-            } catch (err) {
-                console.error('Error generating portfolio HTML:', err);
-                return res.status(500).json({ message: "Failed to generate portfolio", error: err.message });
-            }
+        // Generate AI content using Gemini
+        let aiContent = '';
+        try {
+            aiContent = await generateContent(portfolio);
+        } catch (err) {
+            console.error('Error generating portfolio HTML:', err);
+            return res.status(500).json({ message: "Failed to generate portfolio", error: err.message });
         }
 
         // Generate markdown for preview
         const markdown = generateMarkdown(portfolio);
-        const portfolioPath = `/generated-portfolios/${userId.toString()}/index.html`;
 
         return res.status(200).json({ 
             portfolio,
             markdown,
-            portfolioSitePath: portfolioPath
+            html: aiContent // Return generated HTML directly
         });
     } catch (error) {
         console.log("Error fetching portfolio:", error.message);

@@ -18,6 +18,7 @@ const FormBuilder = () => {
     const [markdown, setMarkdown] = useState('');
     const [portfolioSitePath, setPortfolioSitePath] = useState('');
     const [showPortfolioButton, setShowPortfolioButton] = useState(false);
+    const [portfolioHtml, setPortfolioHtml] = useState('');
     const backendBase = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/,'') : 'http://localhost:3000';
     const [newSkill, setNewSkill] = useState('');
     const [newProject, setNewProject] = useState({
@@ -33,22 +34,11 @@ const FormBuilder = () => {
         if (response.data && response.data.portfolio) {
           setPortfolio(response.data.portfolio);
           setMarkdown(response.data.markdown);
-          if (response.data.portfolioSitePath) {
-            setPortfolioSitePath(response.data.portfolioSitePath);
+          if (response.data.html) {
+            setPortfolioHtml(response.data.html);
             setShowPortfolioButton(true);
           } else {
-            // Only trigger generation if the portfolio exists but the site does not
-            setLoading(true);
-            try {
-              const saveResp = await axios.post('/portfolio/save', response.data.portfolio);
-              setPortfolio(saveResp.data.portfolio);
-              setMarkdown(saveResp.data.markdown);
-              setPortfolioSitePath(saveResp.data.portfolioSitePath);
-              setShowPortfolioButton(true);
-            } catch (err) {
-              toast.error('Failed to generate portfolio site. Please edit and save again.');
-            }
-            setLoading(false);
+            setShowPortfolioButton(false);
           }
         }
         setLoading(false);
@@ -166,10 +156,12 @@ const FormBuilder = () => {
                 />
                 <button
                     className="btn btn-success mt-4"
-                    disabled={!showPortfolioButton || !portfolioSitePath}
+                    disabled={!showPortfolioButton || !portfolioHtml}
                     onClick={() => {
-                        if (showPortfolioButton && portfolioSitePath) {
-                            window.open(`${backendBase}${portfolioSitePath}`, '_blank');
+                        if (showPortfolioButton && portfolioHtml) {
+                            const newWindow = window.open();
+                            newWindow.document.write(portfolioHtml);
+                            newWindow.document.close();
                         } else {
                             toast.info('Please save your portfolio before viewing.');
                         }
