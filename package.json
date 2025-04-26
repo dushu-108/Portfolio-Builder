@@ -5,7 +5,7 @@
   "main": "backend/server.js",
   "type": "module",
   "scripts": {
-    "start": "nodemon backend/server.js",
+    "start": "node backend/server.js",
     "dev": "cd frontend && npm run dev",
     "build": "npm ci && cd frontend && npm ci && npm run build",
     "install-all": "npm ci && cd frontend && npm ci"
