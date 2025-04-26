@@ -21,10 +21,6 @@ ${portfolio.skills.map(skill => `- ${skill}`).join('\n')}
 ${projectsSection}`;
 };
 
-import fs from 'fs';
-import path from 'path';
-import { generateContent } from '../utils/geminiAI.js';
-
 export const getPortfolio = async (req, res) => {
     try {
         const userId = req.user._id;
