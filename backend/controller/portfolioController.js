@@ -30,22 +30,14 @@ export const getPortfolio = async (req, res) => {
             return res.status(404).json({ message: "Portfolio not found" });
         }
 
-        // Generate AI content using Gemini
-        let aiContent = '';
-        try {
-            aiContent = await generateContent(portfolio);
-        } catch (err) {
-            console.error('Error generating portfolio HTML:', err);
-            return res.status(500).json({ message: "Failed to generate portfolio", error: err.message });
-        }
-
         // Generate markdown for preview
         const markdown = generateMarkdown(portfolio);
 
         return res.status(200).json({ 
             portfolio,
             markdown,
-            html: aiContent // Return generated HTML directly
+            html: portfolio.html || '',
+            status: portfolio.status || 'pending',
         });
     } catch (error) {
         console.log("Error fetching portfolio:", error.message);
@@ -58,68 +50,49 @@ export const savePortfolio = async (req, res) => {
         const userId = req.user._id;
         const portfolioData = req.body;
         
-        console.log('Received portfolio data:', portfolioData); // Debug log
-
         let portfolio = await Portfolio.findOne({ userId });
         
         if (portfolio) {
             portfolio = await Portfolio.findOneAndUpdate(
                 { userId },
-                { ...portfolioData },
+                { ...portfolioData, status: 'pending' },
                 { new: true }
             );
         } else {
             portfolio = await Portfolio.create({
                 userId,
-                ...portfolioData
-            });
-        }
-        
-        // Generate AI content using Gemini
-        let aiContent = '';
-        try {
-            console.log('Generating AI content for portfolio:', portfolio); // Debug log
-            aiContent = await generateContent(portfolio);
-            
-            if (!aiContent) {
-                throw new Error('Failed to generate AI content');
-            }
-        } catch (err) {
-            console.error('Gemini AI content generation failed:', err);
-            console.error('Error details:', err.stack); // Add stack trace
-            return res.status(500).json({ 
-                message: "Failed to generate portfolio content",
-                error: err.message 
+                ...portfolioData,
+                status: 'pending',
             });
         }
 
-        // Save the generated website
-        const outputDir = path.join(process.cwd(), 'generated-portfolios', userId.toString());
-        
-        // Create output directory if it doesn't exist
-        if (!fs.existsSync(outputDir)) {
-            fs.mkdirSync(outputDir, { recursive: true });
-        }
-
-        const indexPath = path.join(outputDir, 'index.html');
-        fs.writeFileSync(indexPath, aiContent);
-
-        // Generate markdown for preview
+        // Respond immediately (AI generation in background)
         const markdown = generateMarkdown(portfolio);
-
-        // Format the path for the frontend
-        const portfolioPath = `/generated-portfolios/${userId.toString()}/index.html`;
-
-        console.log('Generated portfolio path:', portfolioPath); // Debug log
-
-        return res.status(200).json({ 
+        res.status(200).json({ 
             portfolio,
             markdown,
-            portfolioSitePath: portfolioPath
+            html: portfolio.html || '',
+            status: 'pending',
+        });
+
+        // Start AI generation in background
+        setImmediate(async () => {
+            try {
+                const aiContent = await generateContent(portfolio);
+                await Portfolio.findOneAndUpdate(
+                    { userId },
+                    { html: aiContent, status: 'ready' }
+                );
+            } catch (err) {
+                console.error('Background AI generation failed:', err);
+                await Portfolio.findOneAndUpdate(
+                    { userId },
+                    { status: 'error' }
+                );
+            }
         });
     } catch (error) {
         console.error('Error in savePortfolio:', error);
-        console.error('Error stack:', error.stack);
         return res.status(500).json({ 
             message: "Error saving portfolio",
             error: error.message

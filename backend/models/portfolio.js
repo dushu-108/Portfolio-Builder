@@ -16,6 +16,8 @@ const projectSchema = new mongoose.Schema({
 });
 
 const portfolioSchema = new mongoose.Schema({
+    html: { type: String },
+    status: { type: String, default: 'ready' },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

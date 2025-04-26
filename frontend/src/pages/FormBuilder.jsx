@@ -19,6 +19,7 @@ const FormBuilder = () => {
     const [portfolioSitePath, setPortfolioSitePath] = useState('');
     const [showPortfolioButton, setShowPortfolioButton] = useState(false);
     const [portfolioHtml, setPortfolioHtml] = useState('');
+    const [portfolioStatus, setPortfolioStatus] = useState('ready');
     const backendBase = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/,'') : 'http://localhost:3000';
     const [newSkill, setNewSkill] = useState('');
     const [newProject, setNewProject] = useState({
@@ -34,6 +35,7 @@ const FormBuilder = () => {
         if (response.data && response.data.portfolio) {
           setPortfolio(response.data.portfolio);
           setMarkdown(response.data.markdown);
+          setPortfolioStatus(response.data.status || 'ready');
           if (response.data.html) {
             setPortfolioHtml(response.data.html);
             setShowPortfolioButton(true);
@@ -113,17 +115,50 @@ const FormBuilder = () => {
             const response = await axios.post('/portfolio/save', portfolio);
             setPortfolio(response.data.portfolio);
             setMarkdown(response.data.markdown);
+            setPortfolioStatus(response.data.status || 'pending');
             setIsEditMode(false);
-            if (response.data.portfolioSitePath) {
-                setPortfolioSitePath(response.data.portfolioSitePath);
+            if (response.data.html) {
+                setPortfolioHtml(response.data.html);
                 setShowPortfolioButton(true);
+            } else {
+                setShowPortfolioButton(false);
             }
-            toast.success('Portfolio saved successfully!');
+            toast.success('Portfolio saved! Regenerating website...');
+            // Start polling for status
+            pollPortfolioStatus();
         } catch (error) {
             console.error('Error saving portfolio:', error);
             toast.error('Failed to save portfolio');
         }
     };
+
+    // Poll for portfolio status until ready
+    const pollPortfolioStatus = async () => {
+        let attempts = 0;
+        const maxAttempts = 40; // ~2 minutes
+        const poll = async () => {
+            try {
+                const response = await axios.get('/portfolio/');
+                setPortfolioStatus(response.data.status || 'pending');
+                if (response.data.status === 'ready') {
+                    setPortfolioHtml(response.data.html);
+                    setShowPortfolioButton(true);
+                    toast.success('Portfolio website updated!');
+                    return;
+                } else if (attempts < maxAttempts) {
+                    attempts++;
+                    setTimeout(poll, 3000);
+                } else {
+                    toast.error('Portfolio generation is taking too long. Please try again later.');
+                }
+            } catch (error) {
+                console.error('Error polling portfolio status:', error);
+                toast.error('Error checking portfolio status.');
+            }
+        };
+        poll();
+    };
+
 
     const handleDelete = async () => {
         if (window.confirm('Are you sure you want to delete your portfolio? This action cannot be undone.')) {
@@ -154,14 +189,22 @@ const FormBuilder = () => {
                     onEdit={() => setIsEditMode(true)}
                     onDelete={handleDelete}
                 />
+                {portfolioStatus === 'pending' && (
+                    <div className="mt-4 flex items-center gap-2">
+                        <span className="loading loading-spinner loading-md"></span>
+                        <span>Regenerating your portfolio website...</span>
+                    </div>
+                )}
                 <button
                     className="btn btn-success mt-4"
-                    disabled={!showPortfolioButton || !portfolioHtml}
+                    disabled={!showPortfolioButton || !portfolioHtml || portfolioStatus !== 'ready'}
                     onClick={() => {
-                        if (showPortfolioButton && portfolioHtml) {
+                        if (showPortfolioButton && portfolioHtml && portfolioStatus === 'ready') {
                             const newWindow = window.open();
                             newWindow.document.write(portfolioHtml);
                             newWindow.document.close();
+                        } else if (portfolioStatus === 'pending') {
+                            toast.info('Please wait, your portfolio is still regenerating.');
                         } else {
                             toast.info('Please save your portfolio before viewing.');
                         }
