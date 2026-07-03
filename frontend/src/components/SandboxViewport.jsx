@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import {
-  SandpackProvider,
   SandpackLayout,
   SandpackCodeEditor,
-  SandpackPreview,
 } from "@codesandbox/sandpack-react";
 
 export default function SandboxViewport({ srcDoc, activeTab, setActiveTab }) {
@@ -52,25 +50,9 @@ export default function SandboxViewport({ srcDoc, activeTab, setActiveTab }) {
               srcDoc={srcDoc}
             />
           ) : (
-            <SandpackProvider 
-              key={srcDoc}
-              theme={'dark'}
-              template="static"
-              files={{
-                "/index.html": srcDoc || "<h1>Loading...</h1>"
-              }}
-              options={{
-                classes: {
-                  "sp-wrapper": "h-full flex-1 flex flex-col min-h-0",
-                  "sp-layout": "h-full flex-1 flex min-h-0"
-                }
-              }}
-              style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}
-            >
-              <SandpackLayout style={{ height: "100%", flex: 1, border: "none", borderRadius: 0, minHeight: 0 }}>
-                <SandpackCodeEditor style={{ height: "100%" }} showTabs={false} showLineNumbers={true} />
-              </SandpackLayout>
-            </SandpackProvider>
+            <SandpackLayout style={{ height: "100%", flex: 1, border: "none", borderRadius: 0, minHeight: 0 }}>
+              <SandpackCodeEditor style={{ height: "100%" }} showTabs={false} showLineNumbers={true} />
+            </SandpackLayout>
           )}
         </div>
       </div>
