@@ -7,8 +7,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "@langchain/community": "^1.1.29",
@@ -26,7 +25,6 @@
     "langchain": "^1.5.2",
     "mongoose": "^9.7.3",
     "multer": "^2.2.0",
-    "nodemon": "^3.1.14",
     "pdf-parse": "^2.4.5"
   }
 }
