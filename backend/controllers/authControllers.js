@@ -150,3 +150,62 @@ export const logout = (req, res) => {
     res.clearCookie("refreshToken");
     return res.status(200).json({message : "Logout successful"})
 }
+
+export const uploadProfilePicture = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No image file provided" });
+        }
+
+        const userId = req.user.id || req.user._id;
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const base64Avatar = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        user.avatar = base64Avatar;
+        await user.save();
+
+        return res.status(200).json({
+            message: "Profile picture updated successfully",
+            avatar: base64Avatar
+        });
+    } catch (error) {
+        console.error("Profile picture upload error:", error);
+        return res.status(500).json({ error: "Failed to upload profile picture" });
+    }
+};
+
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: "Both current password and new password are required" });
+        }
+
+        const userId = req.user.id || req.user._id;
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (user.authProvider === 'google') {
+            return res.status(400).json({ error: "Google account users cannot change their password" });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: "Incorrect current password" });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        user.password = hashedPassword;
+        await user.save();
+
+        return res.status(200).json({ message: "Password changed successfully" });
+    } catch (error) {
+        console.error("Change password error:", error);
+        return res.status(500).json({ error: "Failed to change password" });
+    }
+};

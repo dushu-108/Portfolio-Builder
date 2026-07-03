@@ -6,8 +6,7 @@ import {
   SandpackPreview,
 } from "@codesandbox/sandpack-react";
 
-export default function SandboxViewport({ srcDoc }) {
-  const [activeTab, setActiveTab] = useState('preview');
+export default function SandboxViewport({ srcDoc, activeTab, setActiveTab }) {
 
   return (
     <div className="flex-1 h-full flex flex-col overflow-hidden">

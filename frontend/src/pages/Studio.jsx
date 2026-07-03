@@ -35,6 +35,7 @@ export default function Studio({ workspace, onBackToDashboard }) {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('preview');
   
   const chatEndRef = useRef(null);
 
@@ -119,6 +120,7 @@ export default function Studio({ workspace, onBackToDashboard }) {
   };
 
   const handleDeploy = () => {
+    setActiveTab('code');
     confetti({
       particleCount: 150,
       spread: 80,
@@ -127,14 +129,14 @@ export default function Studio({ workspace, onBackToDashboard }) {
     
     const depMsg = {
       sender: 'system',
-      text: '🎉 Workspace successfully deployed to production! Your live URL: https://dushyant-portfolio.vercel.app',
+      text: '🎉 Redirected to code editor sandbox! You can modify files directly here.',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     setMessages((prev) => [...prev, depMsg]);
   };
 
   const handleDownload = () => {
-    alert('Preparing your portfolio workspace ZIP bundle containing index.html, styles.css, and package.json...');
+    setActiveTab('code');
   };
 
   const generateIframeContent = () => {
@@ -188,7 +190,11 @@ export default function Studio({ workspace, onBackToDashboard }) {
           chatEndRef={chatEndRef}
         />
 
-        <SandboxViewport srcDoc={generateIframeContent()} />
+        <SandboxViewport 
+          srcDoc={generateIframeContent()} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+        />
       </div>
     </div>
   );
