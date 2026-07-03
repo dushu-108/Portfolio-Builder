@@ -11,9 +11,7 @@ The application is structured as a decoupled full-stack architecture:
 ```mermaid
 graph TD
     Client[React Frontend] <-->|REST API / JWT| Server[Express Backend]
-    Server <-->|Database Queries| MongoDB[(MongoDB)]
-    Server <-->|Embed Resume Chunks| Chroma[(Chroma Vector DB)]
-    Server <-->|Llama 3.3 via Groq| Groq[Groq API]
+    Server <-->|Database Queries & Vector Search| MongoDB[(MongoDB Atlas)]
     Server <-->|Mistral Embed & Chat| Mistral[Mistral AI API]
 ```
 
@@ -27,9 +25,8 @@ sequenceDiagram
     actor User
     participant FE as Frontend (React)
     participant BE as Backend (Express)
-    participant DB as MongoDB
-    participant Chroma as Chroma DB
-    participant LLM as LLM APIs (Groq & Mistral)
+    participant DB as MongoDB Atlas
+    participant LLM as Mistral AI API
 
     User->>FE: Sign Up / Sign In
     FE->>BE: POST /api/auth/register or /login
@@ -39,10 +36,10 @@ sequenceDiagram
     FE->>BE: POST /api/workspaces (multipart/form-data)
     BE->>BE: Extract resume text using pdf-parse
     BE->>DB: Save Workspace Metadata (Cached resume context)
-    BE->>Chroma: Split text & Embed chunks (Mistral embeddings)
-    BE->>Chroma: Query context chunks
-    Chroma-->>BE: Return text chunks
-    BE->>LLM: Generate initial HTML (Groq Llama 3.3)
+    BE->>DB: Split, embed with Mistral and index in vector_resumes
+    BE->>DB: Query context chunks via Vector Search
+    DB-->>BE: Return text chunks
+    BE->>LLM: Generate initial HTML (Mistral)
     LLM-->>BE: Return valid HTML code
     BE->>DB: Save generated HTML & first greeting message
     BE-->>FE: Return newly generated workspace details
@@ -50,26 +47,24 @@ sequenceDiagram
 
     User->>FE: Ask adjustment prompt (e.g., "Use purple theme")
     FE->>BE: POST /api/workspaces/:workspaceId/chat
-    BE->>Chroma: Search resume context matching prompt query
-    Chroma-->>BE: Return context
-    BE->>LLM: Compile updated HTML code (Groq Llama 3.3)
-    LLM-->>BE: Return updated HTML
-    BE->>LLM: Write summary of changes conversational explanation (Mistral AI)
-    LLM-->>BE: Return conversational response
+    BE->>DB: Search resume context using Atlas Vector Search
+    DB-->>BE: Return context
+    BE->>LLM: Compile updated HTML code and write conversational explanation (Mistral)
+    LLM-->>BE: Return updated HTML and response summary
     BE->>DB: Append messages & update generatedHtml in DB
     BE-->>FE: Return updated workspace document
     FE->>User: Rerender preview frame and update Sandpack code
 
     User->>FE: Click Download ZIP / Deploy
-    FE-->>User: Trigger canvas-confetti & serve ZIP or live link
+    FE-->>User: Switch editor view to Code Editor / Sandbox tab
 ```
 
-1. **Authentication**: Users register or authenticate through standard credential sign-ins or Google Client OAuth tokens.
-2. **Workspace Creation**: The user inputs a project title, uploads a PDF resume (optional), and selects preferred themes and ATS formats.
-3. **Parsing & Vectorization**: The backend processes PDF buffer contents with `pdf-parse`, segments text into overlapping blocks, generates vector embeddings with Mistral AI, and indexes them in Chroma DB.
-4. **Initial Code Generation**: Context chunks matching index terms are retrieved. The system prompts ChatGroq (Llama 3.3) to output a complete initial HTML portfolio document which is stored directly in MongoDB.
-5. **Interactive Customization**: When a prompt is submitted from the Studio, the backend executes semantic retrieval from Chroma, compiles code updates using ChatGroq, and gets a conversational summary of changes using ChatMistralAI before updating MongoDB and return documents.
-6. **Deployment & Export**: The user is enabled to download local source files as a ZIP package or deploy the portfolio instantly to a live server.
+1. **Authentication**: Users register or authenticate through standard credential sign-ins or Google Client OAuth tokens. Users can upload profile pictures (stored as base64 in MongoDB) and update passwords (for email-based accounts).
+2. **Workspace Creation**: The user inputs a project title, uploads a PDF resume (optional), and selects preferred themes and formats.
+3. **Parsing & Vectorization**: The backend processes PDF buffer contents with `pdf-parse`, segments text into overlapping blocks, generates vector embeddings with Mistral AI, and indexes them in a MongoDB Atlas Vector Search collection (`vector_resumes`).
+4. **Initial Code Generation**: Context chunks matching index terms are retrieved. The system prompts Mistral to output a complete initial HTML portfolio document which is stored directly in MongoDB.
+5. **Interactive Customization**: When a prompt is submitted from the Studio, the backend executes semantic retrieval from MongoDB Atlas Vector Search, compiles code updates, and gets a conversational summary of changes using Mistral before updating MongoDB and returning documents.
+6. **Sandbox Editor & Export**: The user can view the live page preview or transition directly to the Codesandbox-based editor viewport upon clicking Download or Deploy to tweak the code.
 
 ---
 
@@ -152,14 +147,14 @@ Express middleware handler.
 - **`authMiddleware(req, res, next)`**: Decodes authorization Bearer headers, verifies validity of current Access JWT, and injects user profile payload.
 
 #### `backend/AI/create_db.js`
-Chroma Vector database manager.
-- **`initializeVectorStore(text, userId, workspaceId)`**: Recursively splits resume file text, attaches metadata tags, generates vector embeddings using Mistral AI, and stores it in the local Chroma database.
+MongoDB Atlas Vector Search manager.
+- **`initializeVectorStore(text, userId, workspaceId)`**: Recursively splits resume file text, attaches metadata tags, generates vector embeddings using Mistral AI, and stores it in the `vector_resumes` collection.
 
 #### `backend/AI/main.js`
 AI Generation orchestrators.
-- **`extractHtml(text)`**: Helper function to find, extract, and clean target `html` or `xml` markdown code blocks from model outputs.
-- **`generateInitialPortfolio(workspaceId)`**: Queries the Vector DB for resume content, applies layout tokens, and requests Groq LLM (Llama 3.3) to generate a portfolio mockup.
-- **`updatePortfolioWithChat(workspaceId, userMessageText)`**: Gathers message context (last 10 messages), fetches vector db blocks, updates HTML using ChatGroq, explains updates using ChatMistralAI, and saves state to Mongo.
+- **`extractHtml(text)`**: Helper function to find, extract, and clean target `html` markdown code blocks from model outputs.
+- **`generateInitialPortfolio(workspaceId)`**: Queries MongoDB Atlas Vector Search for resume content, applies layout tokens, and requests Mistral AI to generate a portfolio mockup.
+- **`updatePortfolioWithChat(workspaceId, userMessageText)`**: Gathers message context (last 10 messages), fetches vector db blocks, updates HTML, explains updates, and saves state to MongoDB.
 - **`runRAGPipeline()`**: Interactive terminal demo interface.
 
 #### `backend/controllers/authControllers.js`
@@ -169,11 +164,13 @@ Authentication controller methods.
 - **`refresh(req, res)`**: Inspects refresh token cookie and distributes fresh short-term Access JWT.
 - **`googleLogin(req, res)`**: Decodes, validates Google Client OAuth ticket, signs up/logs in matching profile, and sets JWT cookies.
 - **`logout(req, res)`**: Deletes session cookie keys.
+- **`uploadProfilePicture(req, res)`**: Converts uploaded image buffer to a base64 Data URL and saves it to the User profile.
+- **`changePassword(req, res)`**: Validates current password and updates with a newly hashed password.
 
 #### `backend/controllers/workspaceController.js`
 Portfolio and studio management methods.
 - **`getWorkspaces(req, res)`**: Lists all workspaces owned by the user.
-- **`createWorkspace(req, res)`**: Parses PDF resume buffer text (using `pdf-parse`), initializes vector index, triggers initial RAG pipeline generation, and saves the workspace.
+- **`createWorkspace(req, res)`**: Parses PDF resume buffer text (using `pdf-parse`), initializes MongoDB Vector Search collection, triggers initial RAG pipeline generation, and saves the workspace.
 - **`getWorkspace(req, res)`**: Fetches details for a specific workspace.
 - **`deleteWorkspace(req, res)`**: Deletes a specific workspace.
 - **`chatInWorkspace(req, res)`**: Directs user instruction to the update pipeline and returns modified documents.
@@ -192,6 +189,7 @@ Handles route mounting (`react-router-dom`) and controls global dark mode styles
 Redux slice actions:
 - **`login(state, action)`**: Saves user metadata and tokens in state and local storage.
 - **`logout(state)`**: Clears store properties and deletes local storage entries.
+- **`updateUser(state, action)`**: Merges changes into the active user's details and updates local storage.
 
 #### `frontend/src/components/AuthShell.jsx`
 Shared design shell layout for login/signup pages.
@@ -222,5 +220,5 @@ Visual grid lists showing user portfolios cards and create trigger.
 - **`Dashboard.jsx`**: Coordinates workspaces loading, listing, and modal creation triggers.
 - **`Login.jsx`**: Connects credentials/OAuth login events.
 - **`Signup.jsx`**: Connects email signup registration events.
-- **`Profile.jsx`**: User profile parameters viewer.
+- **`Profile.jsx`**: Premium full-page user profile and security configuration settings with avatar uploading.
 - **`Studio.jsx`**: Studio layout that synchronizes sidebar prompts and Sandbox previews.
