@@ -1,8 +1,9 @@
 import { configDotenv } from "dotenv";
 import { MistralAIEmbeddings, ChatMistralAI } from "@langchain/mistralai";
-import { Chroma } from "@langchain/community/vectorstores/chroma";
+import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
 import { Workspace } from "../models/workspace.js";
 import connectDB from "../connect.js";
+import mongoose from "mongoose";
 import readline from "readline";
 
 configDotenv();
@@ -85,20 +86,33 @@ export async function generateInitialPortfolio(workspaceId) {
     model: "mistral-embed"
   });
 
-  const vectorStore = new Chroma(embeddingModel, {
-    collectionName: "user_resumes",
-    url: process.env.CHROMA_URL || "http://localhost:8000"
+  const collection = mongoose.connection.db.collection("vector_resumes");
+
+  const vectorStore = new MongoDBAtlasVectorSearch(embeddingModel, {
+    collection: collection,
+    indexName: process.env.MONGODB_VECTOR_INDEX || "vector_index",
+    textKey: "text",
+    embeddingKey: "embedding"
   });
 
   const retriever = vectorStore.asRetriever({
     searchType: "similarity",
     searchKwargs: {
       k: 6,
-      filter: { workspaceId: String(workspaceId) }
+      filter: {
+        postFilterPipeline: [
+          {
+            $match: {
+              "workspaceId": String(workspaceId)
+            }
+          }
+        ]
+      }
     }
   });
 
   const docs = await retriever.invoke("skills education work experience projects profile summary contact");
+  console.log(`[RAG DEBUG] Retrieved ${docs.length} context documents for workspace ${workspaceId}`);
   const context = docs.map((doc) => doc.pageContent).join("\n\n");
 
   const templateId = workspace.lockedTemplateId || "minimalist";
@@ -155,20 +169,33 @@ export async function updatePortfolioWithChat(workspaceId, userMessageText) {
     model: "mistral-embed"
   });
 
-  const vectorStore = new Chroma(embeddingModel, {
-    collectionName: "user_resumes",
-    url: process.env.CHROMA_URL || "http://localhost:8000"
+  const collection = mongoose.connection.db.collection("vector_resumes");
+
+  const vectorStore = new MongoDBAtlasVectorSearch(embeddingModel, {
+    collection: collection,
+    indexName: process.env.MONGODB_VECTOR_INDEX || "vector_index",
+    textKey: "text",
+    embeddingKey: "embedding"
   });
 
   const retriever = vectorStore.asRetriever({
     searchType: "similarity",
     searchKwargs: {
       k: 4,
-      filter: { workspaceId: String(workspaceId) }
+      filter: {
+        postFilterPipeline: [
+          {
+            $match: {
+              "workspaceId": String(workspaceId)
+            }
+          }
+        ]
+      }
     }
   });
 
   const docs = await retriever.invoke(userMessageText);
+  console.log(`[RAG DEBUG] Retrieved ${docs.length} context documents during chat for workspace ${workspaceId}`);
   const context = docs.map((doc) => doc.pageContent).join("\n\n");
 
   const templateId = workspace.lockedTemplateId || "minimalist";

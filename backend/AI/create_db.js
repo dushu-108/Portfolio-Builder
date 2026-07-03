@@ -1,7 +1,8 @@
 import {configDotenv} from "dotenv";
-import { Chroma } from "@langchain/community/vectorstores/chroma";
+import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
 import { MistralAIEmbeddings } from "@langchain/mistralai";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import mongoose from "mongoose";
 
 configDotenv();
 
@@ -26,9 +27,13 @@ export const initializeVectorStore = async (text, userId, workspaceId) => {
       model: "mistral-embed",
     });
 
-    await Chroma.fromDocuments(chunksWithMetadata, embeddings, {
-      collectionName: "user_resumes",
-      url: process.env.CHROMA_URL || "http://localhost:8000", 
+    const collection = mongoose.connection.db.collection("vector_resumes");
+
+    await MongoDBAtlasVectorSearch.fromDocuments(chunksWithMetadata, embeddings, {
+      collection: collection,
+      indexName: process.env.MONGODB_VECTOR_INDEX || "vector_index",
+      textKey: "text",
+      embeddingKey: "embedding",
     });
 
     console.log(`Successfully indexed vector embeddings for workspace: ${workspaceId}`);
