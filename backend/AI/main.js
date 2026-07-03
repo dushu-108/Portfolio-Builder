@@ -107,7 +107,11 @@ export async function generateInitialPortfolio(workspaceId) {
 
   const docs = await retriever.invoke("skills education work experience projects profile summary contact");
   console.log(`[RAG DEBUG] Retrieved ${docs.length} context documents for workspace ${workspaceId}`);
-  const context = docs.map((doc) => doc.pageContent).join("\n\n");
+  let context = docs.map((doc) => doc.pageContent).join("\n\n");
+  if (!context.trim() && workspace.cachedResumeContext) {
+    console.log(`[RAG DEBUG] Vector search returned empty context (indexing delay). Falling back to cachedResumeContext.`);
+    context = workspace.cachedResumeContext;
+  }
 
   const templateId = workspace.lockedTemplateId || "minimalist";
   const handler = templateHandlers[templateId] || templateHandlers.minimalist;
@@ -184,7 +188,11 @@ export async function updatePortfolioWithChat(workspaceId, userMessageText) {
 
   const docs = await retriever.invoke(userMessageText);
   console.log(`[RAG DEBUG] Retrieved ${docs.length} context documents during chat for workspace ${workspaceId}`);
-  const context = docs.map((doc) => doc.pageContent).join("\n\n");
+  let context = docs.map((doc) => doc.pageContent).join("\n\n");
+  if (!context.trim() && workspace.cachedResumeContext) {
+    console.log(`[RAG DEBUG] Vector search returned empty context. Falling back to cachedResumeContext.`);
+    context = workspace.cachedResumeContext;
+  }
 
   const templateId = workspace.lockedTemplateId || "minimalist";
   const handler = templateHandlers[templateId] || templateHandlers.minimalist;
