@@ -97,16 +97,10 @@ export async function generateInitialPortfolio(workspaceId) {
 
   const retriever = vectorStore.asRetriever({
     searchType: "similarity",
-    searchKwargs: {
-      k: 6,
-      filter: {
-        postFilterPipeline: [
-          {
-            $match: {
-              "workspaceId": String(workspaceId)
-            }
-          }
-        ]
+    k: 6,
+    filter: {
+      preFilter: {
+        "workspaceId": { $eq: String(workspaceId) }
       }
     }
   });
@@ -180,16 +174,10 @@ export async function updatePortfolioWithChat(workspaceId, userMessageText) {
 
   const retriever = vectorStore.asRetriever({
     searchType: "similarity",
-    searchKwargs: {
-      k: 4,
-      filter: {
-        postFilterPipeline: [
-          {
-            $match: {
-              "workspaceId": String(workspaceId)
-            }
-          }
-        ]
+    k: 4,
+    filter: {
+      preFilter: {
+        "workspaceId": { $eq: String(workspaceId) }
       }
     }
   });
