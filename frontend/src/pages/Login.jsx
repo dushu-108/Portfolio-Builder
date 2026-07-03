@@ -30,7 +30,7 @@ export default function Login({ onNavigate }) {
     const performLogin = async () => {
       setError(null);
       try {
-        const response = await axios.post('http://localhost:3000/api/auth/login', loginPayload);
+        const response = await axios.post('/api/auth/login', loginPayload);
         const { accessToken, user } = response.data;
         localStorage.setItem('token', accessToken);
         localStorage.setItem('user', JSON.stringify(user));
@@ -49,7 +49,7 @@ export default function Login({ onNavigate }) {
     const verifyGoogleToken = async () => {
       setError(null);
       try {
-        const response = await axios.post('http://localhost:3000/api/auth/google/callback', { idToken: googlePayload });
+        const response = await axios.post('/api/auth/google/callback', { idToken: googlePayload });
         
         if (response.data.success) {
           const { accessToken, user } = response.data;

@@ -9,6 +9,7 @@ import { store } from './app/store';
 import axios from 'axios';
 import { login as loginAction, logout as logoutAction } from './app/reducers/authReducers';
 
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'https://portfolio-builder-1.onrender.com';
 axios.defaults.withCredentials = true;
 
 axios.interceptors.response.use(
@@ -26,7 +27,7 @@ axios.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const response = await axios.post(
-          'http://localhost:3000/api/auth/refresh',
+          '/api/auth/refresh',
           {}
         );
         const { accessToken } = response.data;

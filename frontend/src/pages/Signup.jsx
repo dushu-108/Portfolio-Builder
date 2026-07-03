@@ -28,7 +28,7 @@ export default function Signup({ onNavigate }) {
       setError(null);
       setSuccess(null);
       try {
-        await axios.post('http://localhost:3000/api/auth/register', signupPayload);
+        await axios.post('/api/auth/register', signupPayload);
         setSuccess("Account registered successfully! Redirecting to login...");
         setTimeout(() => {
           onNavigate('/login');
@@ -47,7 +47,7 @@ export default function Signup({ onNavigate }) {
     const verifyGoogleToken = async () => {
       setError(null);
       try {
-        const response = await axios.post('http://localhost:3000/api/auth/google/callback', { idToken: googlePayload });
+        const response = await axios.post('/api/auth/google/callback', { idToken: googlePayload });
         
         if (response.data.success) {
           const { accessToken, user } = response.data;

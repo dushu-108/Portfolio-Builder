@@ -58,7 +58,7 @@ export default function Profile() {
 
     setUploading(true);
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/profile-picture', formData, {
+      const response = await axios.post('/api/auth/profile-picture', formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -91,7 +91,7 @@ export default function Profile() {
 
     setPwLoading(true);
     try {
-      await axios.post('http://localhost:3000/api/auth/change-password', {
+      await axios.post('/api/auth/change-password', {
         currentPassword,
         newPassword
       }, {

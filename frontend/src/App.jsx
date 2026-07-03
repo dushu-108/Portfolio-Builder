@@ -58,7 +58,7 @@ function App() {
 
   const handleSelectWorkspace = async (workspace) => {
     try {
-      const response = await axios.get(`http://localhost:3000/api/workspaces/${workspace.id}`, {
+      const response = await axios.get(`/api/workspaces/${workspace.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

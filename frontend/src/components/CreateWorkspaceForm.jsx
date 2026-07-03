@@ -45,7 +45,7 @@ export default function CreateWorkspaceForm({ onSubmit, onCancel }) {
         formData.append('resume', pdfFile);
       }
 
-      const response = await axios.post('http://localhost:3000/api/workspaces', formData, {
+      const response = await axios.post('/api/workspaces', formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',

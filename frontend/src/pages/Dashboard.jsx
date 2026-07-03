@@ -16,7 +16,7 @@ export default function Dashboard({ onCreateWorkspace, onSelectWorkspace }) {
     async function fetchWorkspaces() {
       if (!token) return;
       try {
-        const response = await axios.get('http://localhost:3000/api/workspaces', {
+        const response = await axios.get('/api/workspaces', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -52,7 +52,7 @@ export default function Dashboard({ onCreateWorkspace, onSelectWorkspace }) {
       return;
     }
     try {
-      await axios.delete(`http://localhost:3000/api/workspaces/${workspace.id}`, {
+      await axios.delete(`/api/workspaces/${workspace.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

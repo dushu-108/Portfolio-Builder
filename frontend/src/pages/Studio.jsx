@@ -45,7 +45,7 @@ export default function Studio({ workspace, onBackToDashboard }) {
       if (!token) return;
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:3000/api/workspaces/${id}`, {
+        const response = await axios.get(`/api/workspaces/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -94,7 +94,7 @@ export default function Studio({ workspace, onBackToDashboard }) {
     setIsTyping(true);
 
     try {
-      const response = await axios.post(`http://localhost:3000/api/workspaces/${id}/chat`, 
+      const response = await axios.post(`/api/workspaces/${id}/chat`, 
         { text: textToSend },
         {
           headers: {
