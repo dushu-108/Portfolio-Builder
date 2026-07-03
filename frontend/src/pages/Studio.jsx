@@ -7,7 +7,6 @@ import SandboxViewport from '../components/SandboxViewport';
 import { useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { SandpackProvider, UnstyledOpenInCodeSandboxButton } from "@codesandbox/sandpack-react";
 
 export default function Studio({ workspace, onBackToDashboard }) {
   const token = useSelector((state) => state.auth.token);
@@ -120,7 +119,7 @@ export default function Studio({ workspace, onBackToDashboard }) {
     }
   };
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
     setActiveTab('code');
     confetti({
       particleCount: 150,
@@ -130,10 +129,41 @@ export default function Studio({ workspace, onBackToDashboard }) {
     
     const depMsg = {
       sender: 'system',
-      text: '🎉 Redirected to code editor sandbox! You can modify files directly here.',
+      text: '🚀 Exporting sandbox and opening CodeSandbox in a new tab...',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     setMessages((prev) => [...prev, depMsg]);
+
+    try {
+      const response = await fetch("https://codesandbox.io/api/v1/sandboxes/define?json=1", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          files: {
+            "index.html": {
+              content: generatedHtml || "<h1>Loading...</h1>"
+            }
+          }
+        })
+      });
+      
+      const data = await response.json();
+      const sandboxId = data.sandbox_id;
+      if (sandboxId) {
+        window.open(`https://codesandbox.io/p/sandbox/${sandboxId}`, '_blank');
+      }
+    } catch (err) {
+      console.error("Failed to deploy to CodeSandbox:", err);
+      const errMsg = {
+        sender: 'system',
+        text: '❌ Failed to deploy to CodeSandbox. Please try again.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, errMsg]);
+    }
   };
 
   const handleDownload = () => {
@@ -154,60 +184,49 @@ export default function Studio({ workspace, onBackToDashboard }) {
   }
 
   return (
-    <SandpackProvider
-      key={generatedHtml}
-      theme="dark"
-      template="static"
-      files={{
-        "/index.html": generatedHtml || "<h1>Loading...</h1>"
-      }}
-    >
-      <div className="flex flex-col h-screen pt-16 overflow-hidden bg-canvas-soft">
-        <div className="h-14 border-b border-hairline bg-white flex items-center justify-between px-6 shrink-0 z-10">
-          <div className="flex items-center gap-2 font-sans text-sm font-medium text-neutral-500">
-            <button 
-              onClick={onBackToDashboard}
-              className="flex items-center gap-1.5 py-1 px-2 text-neutral-500 hover:text-ink cursor-pointer transition-colors duration-150"
-            >
-              <ArrowLeft size={16} />
-              Back
-            </button>
-            <span>Workspaces</span>
-            <span>/</span>
-            <span className="text-ink font-semibold">{currentWorkspace?.projectTitle || currentWorkspace?.name || 'Workspace'}</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={handleDownload}>
-              <Download size={14} />
-              Download ZIP
-            </Button>
-            <UnstyledOpenInCodeSandboxButton>
-              <Button variant="primary" onClick={handleDeploy}>
-                <CloudLightning size={14} />
-                Deploy Project
-              </Button>
-            </UnstyledOpenInCodeSandboxButton>
-          </div>
+    <div className="flex flex-col h-screen pt-16 overflow-hidden bg-canvas-soft">
+      <div className="h-14 border-b border-hairline bg-white flex items-center justify-between px-6 shrink-0 z-10">
+        <div className="flex items-center gap-2 font-sans text-sm font-medium text-neutral-500">
+          <button 
+            onClick={onBackToDashboard}
+            className="flex items-center gap-1.5 py-1 px-2 text-neutral-500 hover:text-ink cursor-pointer transition-colors duration-150"
+          >
+            <ArrowLeft size={16} />
+            Back
+          </button>
+          <span>Workspaces</span>
+          <span>/</span>
+          <span className="text-ink font-semibold">{currentWorkspace?.projectTitle || currentWorkspace?.name || 'Workspace'}</span>
         </div>
 
-        <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px-56px)] max-lg:flex-col">
-          <ChatSidebar 
-            messages={messages}
-            inputText={inputText}
-            setInputText={setInputText}
-            isTyping={isTyping}
-            onSubmit={handleSendPrompt}
-            chatEndRef={chatEndRef}
-          />
-
-          <SandboxViewport 
-            srcDoc={generateIframeContent()} 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
-          />
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={handleDownload}>
+            <Download size={14} />
+            Download ZIP
+          </Button>
+          <Button variant="primary" onClick={handleDeploy}>
+            <CloudLightning size={14} />
+            Deploy Project
+          </Button>
         </div>
       </div>
-    </SandpackProvider>
+
+      <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px-56px)] max-lg:flex-col">
+        <ChatSidebar 
+          messages={messages}
+          inputText={inputText}
+          setInputText={setInputText}
+          isTyping={isTyping}
+          onSubmit={handleSendPrompt}
+          chatEndRef={chatEndRef}
+        />
+
+        <SandboxViewport 
+          srcDoc={generateIframeContent()} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+        />
+      </div>
+    </div>
   );
 }
