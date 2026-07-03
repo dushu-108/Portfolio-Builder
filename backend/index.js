@@ -10,8 +10,23 @@ import connectDB from './connect.js';
 const app = express();
 
 app.use(express.json());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://portfolio-builder-flame-pi.vercel.app'
+];
+
+if (process.env.CLIENT_URL) {
+  allowedOrigins.push(process.env.CLIENT_URL);
+}
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(new Error('CORS not allowed for origin: ' + origin), false);
+    }
+    return callback(null, true);
+  },
   credentials: true
 }));
 app.use(cookieParser());
